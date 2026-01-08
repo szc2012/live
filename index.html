@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCTV 直播播放</title>
+    <style>
+        /* 全局样式重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", "PingFang SC", sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* 页面头部 */
+        header {
+            background: linear-gradient(90deg, #c91423, #a80f1c);
+            color: white;
+            padding: 15px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            font-size: 24px;
+            font-weight: bold;
+            background-color: white;
+            color: #c91423;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .live-status {
+            background-color: white;
+            color: #c91423;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #c91423;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* 主内容区 */
+        main {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        /* 播放器容器 */
+        .player-container {
+            background-color: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            position: relative;
+            transition: transform 0.3s ease;
+        }
+
+        .player-container:hover {
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+        }
+
+        #video-player {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* 加载提示 */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 10;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #c91423;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 频道信息卡片 */
+        .channel-info {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .channel-title {
+            color: #c91423;
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .channel-desc {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        /* 底部信息 */
+        footer {
+            background-color: #333;
+            color: #ccc;
+            text-align: center;
+            padding: 20px 0;
+            margin-top: 40px;
+            font-size: 14px;
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 768px) {
+            .logo-text {
+                font-size: 18px;
+            }
+            
+            .channel-title {
+                font-size: 18px;
+            }
+            
+            .player-container {
+                border-radius: 5px;
+            }
+            
+            main {
+                margin: 15px auto;
+            }
+        }
+
+        /* 错误提示样式 */
+        .error-message {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background-color: #c91423;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面头部 -->
+    <header>
+        <div class="header-container">
+            <div class="logo">
+                <div class="logo-icon">CCTV</div>
+                <div class="logo-text">中国中央电视台 直播</div>
+            </div>
+            <div class="live-status">
+                <span class="live-dot"></span>
+                正在直播
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main>
+        <!-- 播放器容器 -->
+        <div class="player-container">
+            <!-- 加载遮罩 -->
+            <div class="loading-overlay" id="loadingOverlay">
+                <div class="loading-spinner"></div>
+                <p>正在加载直播流，请稍候...</p>
+            </div>
+            
+            <!-- 视频播放容器 -->
+            <video id="video-player" controls autoplay muted></video>
+        </div>
+
+        <!-- 频道信息 -->
+        <div class="channel-info">
+            <h2 class="channel-title">CCTV 直播频道</h2>
+            <p class="channel-desc">
+                本页面提供中央电视台高清直播流服务，实时转播各类新闻、综艺、体育、影视剧等节目内容。
+                观看过程中如遇卡顿，请检查网络连接或刷新页面。直播信号来源于官方授权渠道，版权归中央广播电视总台所有。
+            </p>
+        </div>
+    </main>
+
+    <!-- 错误提示 -->
+    <div class="error-message" id="errorMessage"></div>
+
+    <!-- 页脚 -->
+    <footer>
+        © 2026 凌云七班电视部 版权所有
+    </footer>
+
+    <!-- 引入flv.js库（使用CDN） -->
+    <script src="https://cdn.jsdelivr.net/npm/flv.js@1.6.2/dist/flv.min.js"></script>
+    <script>
+        // 获取DOM元素
+        const videoElement = document.getElementById('video-player');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // 显示错误提示
+        function showError(msg) {
+            errorMessage.textContent = msg;
+            errorMessage.style.display = 'block';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        // 检查浏览器是否支持flv.js
+        if (flvjs.isSupported()) {
+            try {
+                // 创建FLV播放器实例（使用能播放的精简版配置）
+                const flvPlayer = flvjs.createPlayer({
+                    type: 'flv', // 流类型
+                    url: 'https://v2bgmxphwpvi0uk41it5d9k65ah0pao1l.mobgslb.tbcache.com:443/pull-f3.douyincdn.com/media/stream-695068581185454764.flv?rsi=1&major_anchor_level=common&abr_pts=-800&unique_id=stream-695068581185454764_684_flv&arch_hrchy=w1&t_id=037-20260108164806525D4955FD39A105FCDC-7EWAfl&exp_hrchy=w1&auth_key=1768465087-0-0-91b295cdd977d183cc998290c90c2653&_session_id=037-20260108164806525D4955FD39A105FCDC-7EWAfl.1767862087739.39024&ali_302c=700&ali_dispatch_cold_stream=on&ali_redirect_ex_hot=66666100&ali_stream_type=00&ali_orig_station=cn7421&ali_st=cn5629&ali_pv=1767862054&ali_ts=1767862088&ali_g=u37'
+                }, {
+                    enableStashBuffer: false, // 关闭缓存，降低直播延迟
+                    stashInitialSize: 128 // 初始缓存大小（仅保留能播放的配置）
+                });
+                
+                // 将播放器挂载到视频元素上
+                flvPlayer.attachMediaElement(videoElement);
+                
+                // 加载流
+                flvPlayer.load();
+                
+                // 播放视频
+                flvPlayer.play().then(() => {
+                    // 播放成功，隐藏加载遮罩
+                    loadingOverlay.style.display = 'none';
+                }).catch(error => {
+                    console.error('播放失败:', error);
+                    loadingOverlay.style.display = 'none';
+                    showError('直播播放失败，请检查网络或流地址是否有效');
+                });
+
+                // 监听播放器错误事件
+                flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail) => {
+                    console.error('播放器错误:', errorType, errorDetail);
+                    loadingOverlay.style.display = 'none';
+                    
+                    let errorMsg = '直播播放出错';
+                    if (errorType === flvjs.ErrorTypes.NETWORK_ERROR) {
+                        errorMsg = '网络错误，请检查您的网络连接';
+                    } else if (errorType === flvjs.ErrorTypes.MEDIA_ERROR) {
+                        errorMsg = '媒体解码错误，流地址可能已失效';
+                    }
+                    
+                    showError(`${errorMsg}：${errorDetail}`);
+                });
+
+                // 页面关闭时销毁播放器，释放资源
+                window.addEventListener('beforeunload', () => {
+                    flvPlayer.destroy();
+                });
+
+                // 监听视频播放状态
+                videoElement.addEventListener('pause', () => {
+                    document.querySelector('.live-status').innerHTML = '<span class="live-dot"></span> 直播已暂停';
+                });
+
+                videoElement.addEventListener('play', () => {
+                    document.querySelector('.live-status').innerHTML = '<span class="live-dot"></span> 正在直播';
+                });
+            } catch (e) {
+                loadingOverlay.style.display = 'none';
+                showError('播放器初始化失败：' + e.message);
+                console.error('初始化异常:', e);
+            }
+        } else {
+            loadingOverlay.style.display = 'none';
+            showError('您的浏览器不支持FLV视频播放，请更换现代浏览器（如Chrome、Edge、Firefox）');
+        }
+
+        // 处理窗口大小变化，适配视频尺寸
+        window.addEventListener('resize', () => {
+            videoElement.style.height = 'auto';
+        });
+    </script>
+</body>
+</html>
